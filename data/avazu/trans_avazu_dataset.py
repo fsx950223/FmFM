@@ -4,6 +4,7 @@
 from tqdm import tqdm
 from datetime import datetime
 import json
+import random
 
 def trans_date_feat(datetime_str):
   date_hr = datetime.strptime(datetime_str, '%y%m%d%H')
@@ -49,8 +50,10 @@ if __name__ == "__main__":
   thres = 5
   fields_cnt = 23
 
-  data_file = 'train'
-  out_file = open('all_data.csv', 'w')
+  data_file = '/scratch/datasets/avazu/train'
+  train_out_file = open('train.csv', 'w')
+  val_out_file = open('val.csv', 'w')
+  test_out_file = open('test.csv', 'w')
   feature_index = open('feature_index', 'w')
   feature_json = open('features.json', 'w')
 
@@ -70,12 +73,15 @@ if __name__ == "__main__":
 
   for lst in tqdm(feat_list):
     idx = 1
+    remove_keys = set()
     for key, val in lst.items():
       if val < thres:
-        del lst[key]
+        remove_keys.add(key)
       else:
         lst[key] = idx
         idx += 1
+    for key in remove_keys:
+      del lst[key]
 
   for idx, field in tqdm(enumerate(feat_list)):
     for feat, id in field.items():
@@ -84,13 +90,21 @@ if __name__ == "__main__":
 
   for line in tqdm(dataset):
     key, vals = parse_line(line, feat_list, fields_cnt)
-    out_file.write('%s,%s\n' % (key, ','.join([str(s) for s in vals])))
+    r = random.random()
+    if r<0.7:
+      train_out_file.write('%s,%s\n' % (key, ','.join([str(s) for s in vals])))
+    elif r>=0.7 and r<0.9:
+      val_out_file.write('%s,%s\n' % (key, ','.join([str(s) for s in vals])))
+    else:
+      test_out_file.write('%s,%s\n' % (key, ','.join([str(s) for s in vals])))
 
   feature_meta = []
   for idx in range(0, fields_cnt):
     feature_meta.append(('%s' % titles[idx], 'CATEGORICAL', 20))
   json.dump(feature_meta, feature_json, indent=2)
 
-  out_file.close()
+  train_out_file.close()
+  val_out_file.close()
+  test_out_file.close()
   del dataset
 
